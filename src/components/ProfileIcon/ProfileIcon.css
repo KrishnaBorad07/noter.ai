@@ -1,0 +1,68 @@
+.profile-icon {
+  position: relative;
+  cursor: pointer;
+}
+
+.profile-initial {
+  width: 40px;
+  height: 40px;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.profile-initial.large {
+  width: 60px;
+  height: 60px;
+  font-size: 1.8rem;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  min-width: 200px;
+  display: none;
+}
+
+.profile-icon:hover .profile-dropdown {
+  display: block;
+}
+
+.profile-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.profile-email {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0.5rem;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+}
+
+.logout-btn:hover {
+  background-color: #f5f5f5;
+} 
