@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './SignUpForm.css';
 import googleIcon from '../../assets/google.webp';
 import appleIcon from '../../assets/apple.png';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { useAuth } from '../../context/AuthContext'; // ✅ Hook for Supabase signUp
+import { useAuth } from '../../context/AuthContext';
 
-const SignUpForm = ({ onClose, onSwitchToLogin }) => {
+const SignUpForm = ({ onClose, onSwitchToLogin, isModal = false }) => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
 
   const { signUp } = useAuth(); // ✅ Get signUp from AuthContext
@@ -30,8 +31,9 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
       if (error) {
         setError(error.message);
       } else {
-        alert('Signup successful! Please check your email to confirm your account.'); // ✅ Alert user
-        onClose(); // ✅ Close modal
+        alert('Signup successful! Please check your email to confirm your account.');
+        onClose();
+        navigate('/');
       }
     } catch (err) {
       setError(err.message || 'Something went wrong.');
@@ -47,14 +49,10 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
     setShowPassword(!showPassword);
   };
 
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
-
   return (
-    <div className="signup-form-container" onClick={handleClose}>
+    <div className="signup-form-container" onClick={onClose}>
       <div className="signup-form" onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn" onClick={handleClose}>×</button>
+        <button className="close-btn" onClick={onClose}>×</button>
         <h2>Create Account</h2>
         <p className="subtitle">Sign up to get started with Noter AI</p>
 
@@ -98,20 +96,13 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
             <label htmlFor="confirm-password">Confirm Password</label>
             <div className="password-input">
               <input
-                type={showConfirmPassword ? 'text' : 'password'}
+                type={showPassword ? 'text' : 'password'}
                 id="confirm-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
                 required
               />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={toggleConfirmPasswordVisibility}
-              >
-                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
             </div>
           </div>
 
@@ -137,7 +128,11 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
           Already have an account?{' '}
           <a href="#" onClick={(e) => {
             e.preventDefault();
-            onSwitchToLogin();
+            if (isModal) {
+              onSwitchToLogin();
+            } else {
+              navigate('/login');
+            }
           }}>Log in</a>
         </div>
       </div>

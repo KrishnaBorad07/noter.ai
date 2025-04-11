@@ -1,35 +1,48 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import Navbar from './components/Navbar/Navbar.jsx';
 import HeroSection from './components/HeroSection/HeroSection.jsx';
 import History from './pages/History.jsx';
 import Pricing from './pages/Pricing.jsx';
 import Feedback from './pages/Feedback.jsx';
-import LoginForm from './components/LoginForm/LoginForm.jsx'; // ✅ Added
+import LoginForm from './components/LoginForm/LoginForm.jsx';
+import SignUpForm from './components/SignUpForm/SignUpForm.jsx';
+import TranscribeService from './pages/TranscribeService';
+import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import './App.css';
 
 function App() {
+  const navigate = useNavigate();
+
   return (
     <AuthProvider>
-      <Router>
-        <div className="App">
-          <Navbar />
-          <main>
-            <Routes>
-              <Route path="/" element={<HeroSection />} />
-              <Route path="/login" element={<LoginForm />} /> {/* ✅ Added Login Route */}
-              <Route path="/history" element={<History />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/feedback" element={<Feedback />} />
-              <Route path="/profile" element={<div>Profile Page</div>} />
-              <Route path="/settings" element={<div>Settings Page</div>} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
+      <div className="App">
+        <Navbar />
+        <main>
+          <Routes>
+            <Route path="/" element={<HeroSection />} />
+            <Route path="/login" element={<LoginForm isModal={false} onClose={() => navigate('/')} />} />
+            <Route path="/signup" element={<SignUpForm isModal={false} onClose={() => navigate('/')} />} />
+            <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/profile" element={<ProtectedRoute><div>Profile Page</div></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><div>Settings Page</div></ProtectedRoute>} />
+            <Route path="/transcribe" element={<ProtectedRoute><TranscribeService /></ProtectedRoute>} />
+          </Routes>
+        </main>
+      </div>
     </AuthProvider>
   );
 }
 
-export default App;
+function AppWrapper() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
+
+export default AppWrapper;

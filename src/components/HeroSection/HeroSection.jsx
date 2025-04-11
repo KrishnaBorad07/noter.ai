@@ -1,7 +1,21 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './HeroSection.css';
 
-const HeroSection = () => (
+const HeroSection = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleTryService = () => {
+    if (user) {
+      navigate('/transcribe');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  return (
   <section id="hero" className="hero">
     <div className="overlay">
       <h1>
@@ -12,9 +26,10 @@ const HeroSection = () => (
       <p>
         Our AI-powered platform turns lecture recordings into clear, structured notes with summaries, visuals, and easy exports like PDF or DOCX. Whether you're a student catching up or an educator sharing content, we make it simple. With features like Last-Minute Notes for quick revision, you can focus on learning or teaching — while we handle the rest.
       </p>
-      <button className="try-service-btn">Try Service</button>
+      <button className="try-service-btn" onClick={handleTryService}>Try Service</button>
     </div>
   </section>
-);
+  );
+};
 
 export default HeroSection;

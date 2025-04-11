@@ -4,23 +4,27 @@ import googleIcon from '../../assets/google.webp';
 import appleIcon from '../../assets/apple.png';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useNavigate } from 'react-router-dom'; // ✅ import this
+import { useNavigate, useLocation } from 'react-router-dom';
 
-const LoginForm = ({ onClose, onSwitchToSignUp }) => {
+const LoginForm = ({ onClose, onSwitchToSignUp, isModal = false }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
-  const navigate = useNavigate(); // ✅ initialize
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/history';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     try {
       await login(email, password);
-      onClose(); // close modal
-      navigate('/history'); // ✅ proper route redirect
+      // Always close the form after successful login
+      onClose();
+      // Navigate to the protected route the user tried to visit
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid email or password');
       console.error('Login error:', err.message);
@@ -33,7 +37,7 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
 
   return (
     <div className="login-form-container" onClick={onClose}>
-      <div className="login-form" onClick={e => e.stopPropagation()}>
+      <div className="login-form" onClick={(e) => e.stopPropagation()}>
         <button className="close-btn" onClick={onClose}>×</button>
         <h2>Welcome Back</h2>
         <p className="subtitle">Log in to continue to Noter AI</p>
@@ -98,8 +102,12 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
         <div className="signup-link">
           Don't have an account? <a href="#" onClick={(e) => {
             e.preventDefault();
-            onClose();
-            onSwitchToSignUp();
+            if (isModal) {
+              onClose();
+              onSwitchToSignUp();
+            } else {
+              navigate('/signup');
+            }
           }}>Sign up</a>
         </div>
       </div>

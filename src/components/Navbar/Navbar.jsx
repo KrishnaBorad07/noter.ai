@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Navbar.css';
 import LoginForm from '../LoginForm/LoginForm.jsx';
 import SignUpForm from '../SignUpForm/SignUpForm.jsx';
@@ -12,6 +12,7 @@ const Navbar = () => {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLoginClick = () => {
     setShowLogin(true);
@@ -74,11 +75,10 @@ const Navbar = () => {
               <div className="profile-menu">
                 <Link to="/profile" onClick={() => setShowProfileMenu(false)}>Profile</Link>
                 <Link to="/settings" onClick={() => setShowProfileMenu(false)}>Settings</Link>
-                <button onClick={() => {
+                <button onClick={async () => {
                   setShowProfileMenu(false);
-                  setTimeout(() => {
-                    logout();
-                  }, 100);
+                  await logout();
+                  navigate('/');
                 }}>Logout</button>
               </div>
             )}

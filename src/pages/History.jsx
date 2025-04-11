@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaSearch, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
 import { MdFileUpload } from 'react-icons/md';
 import './History_css.css';
 
 const History = () => {
+  const navigate = useNavigate();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -91,7 +92,7 @@ const History = () => {
             />
             <FaMicrophone className="mic-icon" />
           </div>
-          <button className="transcribe-btn">
+          <button className="transcribe-btn" onClick={() => navigate('/transcribe')}>
             <MdFileUpload /> TRANSCRIBE FILES
           </button>
         </div>
