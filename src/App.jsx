@@ -11,6 +11,11 @@ import SignUpForm from './components/SignUpForm/SignUpForm.jsx';
 import TranscribeService from './pages/TranscribeService';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import './App.css';
+// Make sure the AudioConverter component is properly imported and rendered
+import AudioConverter from './components/AudioConverter';
+
+// Import the test component
+import Profile from './components/Profile/Profile';
 
 function App() {
   const navigate = useNavigate();
@@ -27,9 +32,11 @@ function App() {
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/feedback" element={<Feedback />} />
-            <Route path="/profile" element={<ProtectedRoute><div>Profile Page</div></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><div>Settings Page</div></ProtectedRoute>} />
             <Route path="/transcribe" element={<ProtectedRoute><TranscribeService /></ProtectedRoute>} />
+            {/* Fix: Add a proper route for AudioConverter */}
+            <Route path="/convert" element={<AudioConverter />} />
           </Routes>
         </main>
       </div>

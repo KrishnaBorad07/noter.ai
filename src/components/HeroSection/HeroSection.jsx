@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './HeroSection.css';
+import './HeroAnimations.css';
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -16,8 +17,13 @@ const HeroSection = () => {
   };
 
   return (
-  <section id="hero" className="hero">
-    <div className="overlay">
+    <section id="hero" className="hero">
+      <div className="floating-shapes">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className={`shape shape-${i + 1}`} />
+        ))}
+      </div>
+      <div className="overlay">
       <h1>
         <span className="line">Rewriting the</span>
         <span className="line">way you learn</span>
