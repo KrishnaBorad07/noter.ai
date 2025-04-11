@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('isAuthenticated') === 'true'
   })
+  const [email, setEmail] = useState('')
 
   // Sync with Supabase session
   useEffect(() => {
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true)
         localStorage.setItem('user', JSON.stringify(user))
         localStorage.setItem('isAuthenticated', 'true')
+        setEmail(user.user_metadata.email)
       }
     })
 
@@ -30,11 +32,13 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true)
         localStorage.setItem('user', JSON.stringify(currentUser))
         localStorage.setItem('isAuthenticated', 'true')
+        setEmail(currentUser.user_metadata.email)
       } else {
         setUser(null)
         setIsAuthenticated(false)
         localStorage.removeItem('user')
         localStorage.removeItem('isAuthenticated')
+        setEmail('')
       }
     })
 
@@ -67,6 +71,7 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false)
     localStorage.removeItem('user')
     localStorage.removeItem('isAuthenticated')
+    setEmail('')
   }
 
   return (
@@ -74,6 +79,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         isAuthenticated,
         user,
+        email,
         login,
         logout,
         signUp,
