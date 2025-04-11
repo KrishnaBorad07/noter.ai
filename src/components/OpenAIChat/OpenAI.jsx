@@ -8,7 +8,7 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Get OpenAI API key from environment variables
-const OPENAI_API_KEY = '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';
+// const OPENAI_API_KEY = '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';
 
 const OpenAI = () => {
   const { user } = useAuth();
