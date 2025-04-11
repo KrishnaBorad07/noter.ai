@@ -1,14 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaSearch, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
 import { MdFileUpload } from 'react-icons/md';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 import './History_css.css';
 
 const History = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [transcriptions, setTranscriptions] = useState({});
+  const [dropdownPosition, setDropdownPosition] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchFiles();
+    }
+  }, [user]);
+
+  const fetchFiles = async () => {
+    try {
+      // Fetch audio files
+      const { data: audioFiles, error: audioError } = await supabase
+        .storage
+        .from('audio-files')
+        .list(user.id);
+
+      if (audioError) throw audioError;
+
+      // Fetch transcriptions
+      const { data: textFiles, error: textError } = await supabase
+        .storage
+        .from('summarized-text')
+        .list(user.id);
+
+      if (textError) throw textError;
+
+      // Create a map of transcriptions
+      const transcriptionMap = {};
+      textFiles?.forEach(file => {
+        const audioFileName = file.name.replace('.txt', '.mp3');
+        transcriptionMap[audioFileName] = true;
+      });
+
+      // Combine the data
+      const processedFiles = audioFiles.map(file => ({
+        id: file.id,
+        name: file.name,
+        uploaded: new Date(file.created_at).toLocaleString(),
+        status: transcriptionMap[file.name] ? 'completed' : 'pending'
+      }));
+
+      setFiles(processedFiles);
+      setTranscriptions(transcriptionMap);
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    }
+  };
 
   const handleClickOutside = (e) => {
     if (!e.target.closest('.dropdown-container')) {
@@ -25,21 +77,17 @@ const History = () => {
       const rect = button.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      const dropdownHeight = 280; // Approximate height of dropdown
+      const dropdownHeight = 280;
 
       let top, left;
+      left = rect.left - 230;
 
-      // Position horizontally to the left of the button
-      left = rect.left - 230; // 220px width + 10px margin
-
-      // If there's not enough space below, show above
       if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
         top = rect.top - dropdownHeight + 10;
       } else {
         top = rect.top;
       }
 
-      // If dropdown would go off the left edge, show it to the right of the button
       if (left < 10) {
         left = rect.right + 10;
       }
@@ -48,15 +96,6 @@ const History = () => {
       setActiveDropdown(fileId);
     }
   };
-
-  const [dropdownPosition, setDropdownPosition] = useState(null);
-
-
-  const dummyFiles = [
-    { id: 1, name: 'meeting', uploaded: 'Apr 2, 2025, 9:53 PM', duration: '12m 16s', status: 'completed' },
-    { id: 2, name: 'lecture_recording', uploaded: 'Apr 2, 2025, 8:30 PM', duration: '45m 20s', status: 'completed' },
-    { id: 3, name: 'interview', uploaded: 'Apr 1, 2025, 3:15 PM', duration: '30m 45s', status: 'completed' }
-  ];
 
   const handleFileSelect = (fileId) => {
     setSelectedFiles(prev => {
@@ -68,10 +107,27 @@ const History = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedFiles.length === dummyFiles.length) {
+    if (selectedFiles.length === files.length) {
       setSelectedFiles([]);
     } else {
-      setSelectedFiles(dummyFiles.map(file => file.id));
+      setSelectedFiles(files.map(file => file.id));
+    }
+  };
+
+  const handleViewTranscript = async (fileName) => {
+    try {
+      const { data, error } = await supabase
+        .storage
+        .from('summarized-text')
+        .download(`${user.id}/${fileName.replace('.mp3', '.txt')}`);
+
+      if (error) throw error;
+
+      const text = await data.text();
+      // You can implement a modal or navigation to show the transcript
+      console.log('Transcript:', text);
+    } catch (error) {
+      console.error('Error fetching transcript:', error);
     }
   };
 
@@ -105,19 +161,18 @@ const History = () => {
               <th>
                 <input
                   type="checkbox"
-                  checked={selectedFiles.length === dummyFiles.length}
+                  checked={selectedFiles.length === files.length && files.length > 0}
                   onChange={handleSelectAll}
                 />
               </th>
               <th>Name</th>
               <th>Uploaded</th>
-              <th>Duration</th>
               <th>Status</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {dummyFiles.map(file => (
+            {files.map(file => (
               <tr key={file.id} className={selectedFiles.includes(file.id) ? 'selected' : ''}>
                 <td>
                   <input
@@ -128,7 +183,6 @@ const History = () => {
                 </td>
                 <td>{file.name}</td>
                 <td>{file.uploaded}</td>
-                <td>{file.duration}</td>
                 <td>
                   <span className={`status ${file.status}`}>
                     {file.status}
@@ -150,18 +204,21 @@ const History = () => {
                           left: `${dropdownPosition.left}px`
                         }}
                       >
-                        <button className="dropdown-item">
-                          <i className="far fa-file-alt"></i> Open Transcript
-                        </button>
-                        <button className="dropdown-item">
-                          <i className="fas fa-download"></i> Export Transcript
-                        </button>
-                        <button className="dropdown-item">
-                          <i className="fas fa-share"></i> Share Transcript
-                        </button>
+                        {file.status === 'completed' && (
+                          <>
+                            <button 
+                              className="dropdown-item"
+                              onClick={() => handleViewTranscript(file.name)}
+                            >
+                              <i className="far fa-file-alt"></i> View Transcript
+                            </button>
+                            <button className="dropdown-item">
+                              <i className="fas fa-download"></i> Export Transcript
+                            </button>
+                          </>
+                        )}
                         <button className="dropdown-item">
                           <i className="fas fa-cloud-download-alt"></i> Download Audio
-                          <span className="file-size">5.89 MB</span>
                         </button>
                         <button className="dropdown-item">
                           <i className="fas fa-edit"></i> Rename File
