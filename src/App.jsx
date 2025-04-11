@@ -6,6 +6,7 @@ import HeroSection from './components/HeroSection/HeroSection.jsx';
 import History from './pages/History.jsx';
 import Pricing from './pages/Pricing.jsx';
 import Feedback from './pages/Feedback.jsx';
+import LoginForm from './components/LoginForm/LoginForm.jsx'; // ✅ Added
 import './App.css';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <main>
             <Routes>
               <Route path="/" element={<HeroSection />} />
+              <Route path="/login" element={<LoginForm />} /> {/* ✅ Added Login Route */}
               <Route path="/history" element={<History />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/feedback" element={<Feedback />} />

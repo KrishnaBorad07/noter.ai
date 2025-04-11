@@ -4,6 +4,7 @@ import googleIcon from '../../assets/google.webp';
 import appleIcon from '../../assets/apple.png';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useNavigate } from 'react-router-dom'; // ✅ import this
 
 const LoginForm = ({ onClose, onSwitchToSignUp }) => {
   const [email, setEmail] = useState('');
@@ -11,22 +12,18 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
+  const navigate = useNavigate(); // ✅ initialize
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     try {
-      // In a real application, you would validate credentials with your backend
-      // For demo purposes, we'll simulate a successful login
-      const userData = {
-        name: email.split('@')[0], // Using email username as display name
-        email: email,
-      };
-      login(userData);
-      onClose();
+      await login(email, password);
+      onClose(); // close modal
+      navigate('/history'); // ✅ proper route redirect
     } catch (err) {
-      setError('Invalid email or password');
-      console.error('Login error:', err);
+      setError(err.message || 'Invalid email or password');
+      console.error('Login error:', err.message);
     }
   };
 
@@ -41,7 +38,7 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
         <h2>Welcome Back</h2>
         <p className="subtitle">Log in to continue to Noter AI</p>
         {error && <p className="error-message">{error}</p>}
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -54,7 +51,7 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <div className="password-input">
@@ -75,18 +72,18 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
               </button>
             </div>
           </div>
-          
+
           <div className="forgot-password">
             <a href="#" onClick={(e) => e.preventDefault()}>Forgot Password?</a>
           </div>
-          
+
           <button type="submit" className="form-login-btn">Log In</button>
         </form>
-        
+
         <div className="divider">
           <span>or continue with</span>
         </div>
-        
+
         <div className="social-login">
           <button className="social-btn">
             <img src={googleIcon} alt="Google" />
@@ -97,7 +94,7 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
             Log in with Apple
           </button>
         </div>
-        
+
         <div className="signup-link">
           Don't have an account? <a href="#" onClick={(e) => {
             e.preventDefault();
@@ -110,4 +107,4 @@ const LoginForm = ({ onClose, onSwitchToSignUp }) => {
   );
 };
 
-export default LoginForm; 
+export default LoginForm;

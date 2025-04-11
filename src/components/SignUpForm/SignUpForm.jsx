@@ -3,6 +3,7 @@ import './SignUpForm.css';
 import googleIcon from '../../assets/google.webp';
 import appleIcon from '../../assets/apple.png';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext'; // ✅ Hook for Supabase signUp
 
 const SignUpForm = ({ onClose, onSwitchToLogin }) => {
   const [email, setEmail] = useState('');
@@ -10,17 +11,31 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const { signUp } = useAuth(); // ✅ Get signUp from AuthContext
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
     if (password !== confirmPassword) {
-      alert('Passwords do not match!');
+      setError('Passwords do not match!');
       return;
     }
-    // Handle signup logic here
-    console.log('Signup attempt with:', { email, password });
-    // After successful signup, switch to login with the email
-    onSwitchToLogin(email);
+
+    try {
+      const { error } = await signUp(email, password);
+
+      if (error) {
+        setError(error.message);
+      } else {
+        alert('Signup successful! Please check your email to confirm your account.'); // ✅ Alert user
+        onClose(); // ✅ Close modal
+      }
+    } catch (err) {
+      setError(err.message || 'Something went wrong.');
+    }
   };
 
   const handleClose = (e) => {
@@ -38,11 +53,13 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
 
   return (
     <div className="signup-form-container" onClick={handleClose}>
-      <div className="signup-form" onClick={e => e.stopPropagation()}>
+      <div className="signup-form" onClick={(e) => e.stopPropagation()}>
         <button className="close-btn" onClick={handleClose}>×</button>
         <h2>Create Account</h2>
         <p className="subtitle">Sign up to get started with Noter AI</p>
-        
+
+        {error && <p className="error-message">{error}</p>}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -55,20 +72,20 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <div className="password-input">
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="password-toggle"
                 onClick={togglePasswordVisibility}
               >
@@ -81,15 +98,15 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
             <label htmlFor="confirm-password">Confirm Password</label>
             <div className="password-input">
               <input
-                type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPassword ? 'text' : 'password'}
                 id="confirm-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
                 required
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="password-toggle"
                 onClick={toggleConfirmPasswordVisibility}
               >
@@ -97,14 +114,14 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
               </button>
             </div>
           </div>
-          
+
           <button type="submit" className="form-signup-btn">Create Account</button>
         </form>
-        
+
         <div className="divider">
           <span>or continue with</span>
         </div>
-        
+
         <div className="social-signup">
           <button className="social-btn">
             <img src={googleIcon} alt="Google" />
@@ -115,9 +132,10 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
             Sign up with Apple
           </button>
         </div>
-        
+
         <div className="login-link">
-          Already have an account? <a href="#" onClick={(e) => {
+          Already have an account?{' '}
+          <a href="#" onClick={(e) => {
             e.preventDefault();
             onSwitchToLogin();
           }}>Log in</a>
@@ -127,4 +145,4 @@ const SignUpForm = ({ onClose, onSwitchToLogin }) => {
   );
 };
 
-export default SignUpForm; 
+export default SignUpForm;

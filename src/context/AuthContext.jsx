@@ -1,51 +1,93 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
 
-const AuthContext = createContext();
+const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+    const savedUser = localStorage.getItem('user')
+    return savedUser ? JSON.parse(savedUser) : null
+  })
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('isAuthenticated') === 'true'
+  })
 
+  // Sync with Supabase session
   useEffect(() => {
-    localStorage.setItem('isAuthenticated', isAuthenticated);
-    localStorage.setItem('user', user ? JSON.stringify(user) : null);
-  }, [isAuthenticated, user]);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUser(user)
+        setIsAuthenticated(true)
+        localStorage.setItem('user', JSON.stringify(user))
+        localStorage.setItem('isAuthenticated', 'true')
+      }
+    })
 
-  const login = (userData) => {
-    setIsAuthenticated(true);
-    setUser(userData);
-  };
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user
+      if (currentUser) {
+        setUser(currentUser)
+        setIsAuthenticated(true)
+        localStorage.setItem('user', JSON.stringify(currentUser))
+        localStorage.setItem('isAuthenticated', 'true')
+      } else {
+        setUser(null)
+        setIsAuthenticated(false)
+        localStorage.removeItem('user')
+        localStorage.removeItem('isAuthenticated')
+      }
+    })
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('user');
-  };
+    return () => {
+      listener.subscription.unsubscribe()
+    }
+  }, [])
 
-  const value = {
-    isAuthenticated,
-    user,
-    login,
-    logout
-  };
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+    if (error) throw error
+    return data
+  }
+
+  const signUp = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    })
+    if (error) throw error
+    return data
+  }
+
+  const logout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setIsAuthenticated(false)
+    localStorage.removeItem('user')
+    localStorage.removeItem('isAuthenticated')
+  }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        user,
+        login,
+        logout,
+        signUp,
+      }}
+    >
       {children}
     </AuthContext.Provider>
-  );
-};
+  )
+}
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider')
   }
-  return context;
-};
+  return context
+}
