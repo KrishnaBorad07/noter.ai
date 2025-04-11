@@ -124,21 +124,27 @@ input:focus {
 }
 
 .divider {
+  position: relative;
   display: flex;
   align-items: center;
-  margin: 2rem 0;
-  color: #666;
+  margin: 1.25rem 0;
+  height: 20px;
 }
 
 .divider::before,
 .divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #ddd;
+  height: 1px;
+  background-color: #ddd;
 }
 
 .divider span {
-  padding: 0 1rem;
+  padding: 0 10px;
+  color: #666;
+  font-size: 0.7rem;
+  font-weight: normal;
+  background-color: white;
 }
 
 .social-signup {

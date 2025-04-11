@@ -23,8 +23,8 @@ const LoginForm = ({ onClose, onSwitchToSignUp, isModal = false }) => {
       await login(email, password);
       // Always close the form after successful login
       onClose();
-      // Navigate to the protected route the user tried to visit
-      navigate(from, { replace: true });
+      // Navigate to home page
+      navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid email or password');
       console.error('Login error:', err.message);
@@ -85,7 +85,7 @@ const LoginForm = ({ onClose, onSwitchToSignUp, isModal = false }) => {
         </form>
 
         <div className="divider">
-          <span>or continue with</span>
+          <span>continue with</span>
         </div>
 
         <div className="social-login">

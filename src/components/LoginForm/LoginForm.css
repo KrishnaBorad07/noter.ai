@@ -115,23 +115,28 @@
   }
   
   .divider {
+    /* position: relative; */
     display: flex;
     align-items: center;
-    text-align: center;
-    margin: 1.25rem 0;
-    color: #666;
-    font-size: 0.85rem;
+    justify-content: center;
+    /* margin: 1rem 0; */
+    height: 20px;
   }
   
-  .divider::before,
+  /* .divider::before,
   .divider::after {
     content: '';
     flex: 1;
-    border-bottom: 1px solid #ddd;
-  }
+    height: 1px;
+    background-color: #ddd;
+  } */
   
   .divider span {
-    padding: 0 0.75rem;
+    padding: 0;
+    color: #666;
+    font-size: 0.1rem; 
+    font-weight: 200;
+    background-color: white;
   }
   
   .social-login {
