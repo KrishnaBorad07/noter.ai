@@ -4,3 +4,4 @@ moviepy==1.0.3
 supabase==1.0.3
 python-dotenv==1.0.0
 werkzeug==2.0.3
+youtube-transcript-api==0.6.1

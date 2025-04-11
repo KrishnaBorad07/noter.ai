@@ -13,6 +13,8 @@ import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import './App.css';
 // Make sure the AudioConverter component is properly imported and rendered
 import AudioConverter from './components/AudioConverter';
+// Import the OpenAI component for notes generation
+import OpenAI from './components/OpenAIChat/OpenAI';
 
 // Import the test component
 import Profile from './components/Profile/Profile';
@@ -35,6 +37,8 @@ function App() {
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><div>Settings Page</div></ProtectedRoute>} />
             <Route path="/transcribe" element={<ProtectedRoute><TranscribeService /></ProtectedRoute>} />
+            {/* Route for OpenAI notes generation */}
+            <Route path="/notes/:filename" element={<ProtectedRoute><OpenAI /></ProtectedRoute>} />
             {/* Fix: Add a proper route for AudioConverter */}
             <Route path="/convert" element={<AudioConverter />} />
           </Routes>

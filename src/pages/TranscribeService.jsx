@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 
 const TranscribeService = () => {
   const [file, setFile] = useState(null);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -22,10 +23,29 @@ const TranscribeService = () => {
       setError('');
       setSuccess('');
       setAudioUrl(null);
+      setYoutubeUrl(''); // Clear YouTube URL when file is selected
     } else {
       setError('Please select a valid video file');
       setFile(null);
     }
+  };
+
+  const handleYoutubeUrlChange = (e) => {
+    setYoutubeUrl(e.target.value);
+    setFile(null); // Clear file when YouTube URL is entered
+    setError('');
+    setSuccess('');
+    setAudioUrl(null);
+  };
+
+  const validateYoutubeUrl = (url) => {
+    // Support both standard and shortened YouTube URLs
+    const patterns = [
+      /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]{11}/,
+      /^(https?:\/\/)?(www\.)?youtube\.com\/v\/[a-zA-Z0-9_-]{11}/,
+      /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[a-zA-Z0-9_-]{11}/
+    ];
+    return patterns.some(pattern => pattern.test(url));
   };
 
   const transcribeAudio = async (audioFileName) => {
@@ -81,11 +101,70 @@ const TranscribeService = () => {
 
       if (uploadError) throw uploadError;
 
-      setSuccess('Audio converted and transcribed successfully!');
+      setSuccess('Audio converted and transcribed successfully. Generating notes...');
+      
+      // Step 5: Automatically generate notes
+      try {
+        await generateNotesFromTranscription(transcriptionFileName);
+        setSuccess('Audio converted, transcribed, and notes generated successfully!');
+      } catch (noteErr) {
+        console.error('Notes generation error:', noteErr);
+        setSuccess('Audio converted and transcribed successfully, but note generation failed.');
+      }
+      
       navigate('/history'); // Redirect to history page to see the result
     } catch (err) {
       console.error('Transcription error:', err);
-      setError(`Failed to transcribe audio: ${err.message}`);
+      setError(`Failed to transcribe audio: ${err.message || JSON.stringify(err)}`);
+    }
+  };
+
+  const generateNotesFromTranscription = async (transcriptionFileName) => {
+    try {
+      // Get the session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session - please login');
+      }
+
+      console.log(`Sending request to process transcription: ${transcriptionFileName}`);
+      const response = await fetch('http://localhost:5000/process-transcription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ 
+          filename: transcriptionFileName
+        })
+      });
+
+      // Log the raw response for debugging
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+      
+      // Parse the response text as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        throw new Error(`Failed to parse server response: ${responseText.substring(0, 100)}...`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Server error: ${response.status} ${response.statusText}`);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate notes from transcription');
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Notes generation error:', err);
+      // Include more details in the error message
+      throw new Error(`Failed to generate notes: ${err.message || JSON.stringify(err)}`);
     }
   };
 
@@ -118,7 +197,86 @@ const TranscribeService = () => {
     throw new Error('Transcription timed out');
   };
 
-  const handleConversion = async () => {
+  const handleGenerate = async () => {
+    if (file) {
+      await handleVideoConversion();
+    } else if (youtubeUrl) {
+      await handleYoutubeConversion();
+    } else {
+      setError('Please select a video file or enter a YouTube URL');
+    }
+  };
+
+  const handleYoutubeConversion = async () => {
+    if (!youtubeUrl) {
+      setError('Please enter a YouTube URL');
+      return;
+    }
+
+    const trimmedUrl = youtubeUrl.trim();
+    if (!validateYoutubeUrl(trimmedUrl)) {
+      setError('Please enter a valid YouTube URL (e.g., https://youtube.com/watch?v=... or https://youtu.be/...)');
+      return;
+    }
+
+    if (!user) {
+      setError('Please login first');
+      navigate('/login');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    setAudioUrl(null);
+
+    try {
+      // Get the session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session - please login');
+      }
+
+      setSuccess('Starting YouTube video conversion...');
+
+      const response = await fetch('http://localhost:5000/convert-youtube', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ 
+          url: trimmedUrl
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to convert YouTube video');
+      }
+
+      if (data.success && data.url) {
+        setAudioUrl(data.url);
+        setSuccess('Converting YouTube video to audio and starting transcription...');
+        setYoutubeUrl('');
+        setProgress(100);
+        setTimeout(() => setProgress(0), 1000);
+
+        // Start the transcription process
+        await transcribeAudio(data.filename);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      console.error('YouTube conversion error:', err);
+      setError(err.message || 'Failed to convert YouTube video. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVideoConversion = async () => {
     if (!file) {
       setError('Please select a file first');
       return;
@@ -178,11 +336,8 @@ const TranscribeService = () => {
         setProgress(100);
         setTimeout(() => setProgress(0), 1000);
 
-        // Extract the filename from the URL
-        const audioFileName = data.url.split('/').pop();
-        
         // Start the transcription process
-        await transcribeAudio(audioFileName);
+        await transcribeAudio(data.filename);
       } else {
         throw new Error('Invalid response from server');
       }
@@ -196,19 +351,49 @@ const TranscribeService = () => {
 
   return (
     <div className="transcribe-container">
-      <h1 className="transcribe-header">Convert Video to Audio</h1>
+      <h1 className="transcribe-header">Convert Video to Audio & Transcribe</h1>
       
-      <div className="file-upload-container" onClick={() => document.getElementById('file-input').click()}>
-        <input
-          type="file"
-          id="file-input"
-          className="file-input"
-          accept="video/*"
-          onChange={handleFileChange}
-        />
-        <p>Click or drag a video file here</p>
-        {file && <p className="file-info">Selected: {file.name}</p>}
+      <div className="options-container">
+        <div className="option-section">
+          <h2>Option 1: Upload Video File</h2>
+          <div className="file-upload-container" onClick={() => document.getElementById('file-input').click()}>
+            <input
+              type="file"
+              id="file-input"
+              className="file-input"
+              accept="video/*"
+              onChange={handleFileChange}
+            />
+            <p>Click or drag a video file here</p>
+            {file && <p className="file-info">Selected: {file.name}</p>}
+          </div>
+        </div>
+
+        <div className="option-divider">
+          <span>OR</span>
+        </div>
+
+        <div className="option-section">
+          <h2>Option 2: YouTube URL</h2>
+          <div className="youtube-input-container">
+            <input
+              type="text"
+              placeholder="Paste YouTube URL here"
+              value={youtubeUrl}
+              onChange={handleYoutubeUrlChange}
+              className="youtube-input"
+            />
+          </div>
+        </div>
       </div>
+
+      <button
+        className="generate-button"
+        onClick={handleGenerate}
+        disabled={(!file && !youtubeUrl) || loading}
+      >
+        {loading ? 'Processing...' : 'Generate'}
+      </button>
 
       {error && <p className="error-message">{error}</p>}
       {success && <p className="success-message">{success}</p>}
@@ -218,14 +403,6 @@ const TranscribeService = () => {
           <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
         </div>
       )}
-
-      <button
-        className="upload-button"
-        onClick={handleConversion}
-        disabled={!file || loading}
-      >
-        {loading ? 'Converting...' : 'Convert to Audio'}
-      </button>
 
       {audioUrl && (
         <div className="audio-result">

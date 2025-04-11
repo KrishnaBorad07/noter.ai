@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaSearch, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
+import { FaSearch, FaMicrophone, FaEllipsisH, FaFileAlt, FaFileAudio } from 'react-icons/fa';
 import { MdFileUpload } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
@@ -13,8 +13,11 @@ const History = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [files, setFiles] = useState([]);
+  const [notes, setNotes] = useState({});
   const [transcriptions, setTranscriptions] = useState({});
   const [dropdownPosition, setDropdownPosition] = useState(null);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [currentNote, setCurrentNote] = useState({ title: '', content: '' });
 
   useEffect(() => {
     if (user) {
@@ -40,11 +43,26 @@ const History = () => {
 
       if (textError) throw textError;
 
+      // Fetch notes
+      const { data: noteFiles, error: noteError } = await supabase
+        .storage
+        .from('notes')
+        .list(user.id);
+
+      if (noteError) throw noteError;
+
       // Create a map of transcriptions
       const transcriptionMap = {};
       textFiles?.forEach(file => {
         const audioFileName = file.name.replace('.txt', '.mp3');
-        transcriptionMap[audioFileName] = true;
+        transcriptionMap[audioFileName] = file.name;
+      });
+
+      // Create a map of notes
+      const notesMap = {};
+      noteFiles?.forEach(file => {
+        const audioFileName = file.name.replace('_notes.txt', '.mp3');
+        notesMap[audioFileName] = file.name;
       });
 
       // Combine the data
@@ -52,11 +70,19 @@ const History = () => {
         id: file.id,
         name: file.name,
         uploaded: new Date(file.created_at).toLocaleString(),
-        status: transcriptionMap[file.name] ? 'completed' : 'pending'
+        status: notesMap[file.name] 
+          ? 'completed' 
+          : transcriptionMap[file.name] 
+            ? 'transcribed' 
+            : 'pending',
+        hasNotes: !!notesMap[file.name],
+        notesFilename: notesMap[file.name] || null,
+        transcriptionFilename: transcriptionMap[file.name] || null
       }));
 
       setFiles(processedFiles);
       setTranscriptions(transcriptionMap);
+      setNotes(notesMap);
     } catch (error) {
       console.error('Error fetching files:', error);
     }
@@ -114,25 +140,63 @@ const History = () => {
     }
   };
 
-  const handleViewTranscript = async (fileName) => {
+  const handleViewNotes = async (file) => {
     try {
+      if (!file.hasNotes) {
+        alert('No notes available for this file.');
+        return;
+      }
+
       const { data, error } = await supabase
         .storage
-        .from('summarized-text')
-        .download(`${user.id}/${fileName.replace('.mp3', '.txt')}`);
+        .from('notes')
+        .download(`${user.id}/${file.notesFilename}`);
 
       if (error) throw error;
 
-      const text = await data.text();
-      // You can implement a modal or navigation to show the transcript
-      console.log('Transcript:', text);
+      const content = await data.text();
+      setCurrentNote({
+        title: file.name.replace('.mp3', ''),
+        content: content
+      });
+      setShowNoteModal(true);
     } catch (error) {
-      console.error('Error fetching transcript:', error);
+      console.error('Error fetching notes:', error);
     }
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'green';
+      case 'transcribed':
+        return 'orange';
+      case 'pending':
+        return 'gray';
+      default:
+        return 'gray';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'Notes Ready';
+      case 'transcribed':
+        return 'Transcribed';
+      case 'pending':
+        return 'Processing';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const filteredFiles = files.filter(file => 
+    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="history-container">
+    <div className="history-container" onClick={handleClickOutside}>
       <div className="header">
         <div className="left-section">
           <h1>Recent Files</h1>
@@ -146,7 +210,6 @@ const History = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <FaMicrophone className="mic-icon" />
           </div>
           <button className="transcribe-btn" onClick={() => navigate('/transcribe')}>
             <MdFileUpload /> TRANSCRIBE FILES
@@ -159,76 +222,84 @@ const History = () => {
           <thead>
             <tr>
               <th>
-                <input
+                {/* <input
                   type="checkbox"
                   checked={selectedFiles.length === files.length && files.length > 0}
                   onChange={handleSelectAll}
-                />
+                /> */}
               </th>
               <th>Name</th>
               <th>Uploaded</th>
               <th>Status</th>
+              <th>Actions</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {files.map(file => (
+            {filteredFiles.map(file => (
               <tr key={file.id} className={selectedFiles.includes(file.id) ? 'selected' : ''}>
-                <td>
+                {/* <td>
                   <input
                     type="checkbox"
                     checked={selectedFiles.includes(file.id)}
                     onChange={() => handleFileSelect(file.id)}
                   />
-                </td>
+                </td> */}
                 <td>{file.name}</td>
                 <td>{file.uploaded}</td>
                 <td>
-                  <span className={`status ${file.status}`}>
-                    {file.status}
+                  <span className={`status-badge ${getStatusColor(file.status)}`}>
+                    {getStatusText(file.status)}
                   </span>
                 </td>
-                <td className="action-cell">
-                  <div className="dropdown-container" data-file-id={file.id}>
-                    <button 
-                      className="action-btn"
-                      onClick={(e) => toggleDropdown(file.id, e)}
-                    >
-                      <FaEllipsisH />
-                    </button>
-                    {activeDropdown === file.id && dropdownPosition && (
-                      <div 
-                        className="dropdown-menu" 
-                        style={{
-                          top: `${dropdownPosition.top}px`,
-                          left: `${dropdownPosition.left}px`
-                        }}
+                <td>
+                  <div className="action-buttons">
+                    {file.hasNotes && (
+                      <button 
+                        className="action-button notes-button"
+                        onClick={() => handleViewNotes(file)}
+                        title="View Notes"
                       >
-                        {file.status === 'completed' && (
-                          <>
-                            <button 
-                              className="dropdown-item"
-                              onClick={() => handleViewTranscript(file.name)}
-                            >
-                              <i className="far fa-file-alt"></i> View Transcript
-                            </button>
-                            <button className="dropdown-item">
-                              <i className="fas fa-download"></i> Export Transcript
-                            </button>
-                          </>
-                        )}
-                        <button className="dropdown-item">
-                          <i className="fas fa-cloud-download-alt"></i> Download Audio
-                        </button>
-                        <button className="dropdown-item">
-                          <i className="fas fa-edit"></i> Rename File
-                        </button>
-                        <button className="dropdown-item delete">
-                          <i className="fas fa-trash-alt"></i> Delete File
-                        </button>
-                      </div>
+                        <FaFileAlt /> Notes
+                      </button>
+                    )}
+                    {file.transcriptionFilename && !file.hasNotes && (
+                      <button 
+                        className="action-button generate-button"
+                        onClick={() => navigate(`/notes/${file.transcriptionFilename}`)}
+                        title="Generate Notes"
+                      >
+                        <FaFileAlt /> Generate Notes
+                      </button>
                     )}
                   </div>
+                </td>
+                <td>
+                  <button
+                    className="more-options-btn"
+                    onClick={(e) => toggleDropdown(file.id, e)}
+                  >
+                    <FaEllipsisH />
+                  </button>
+                  {activeDropdown === file.id && (
+                    <div
+                      className="dropdown-container"
+                      style={{
+                        position: 'fixed',
+                        top: `${dropdownPosition?.top}px`,
+                        left: `${dropdownPosition?.left}px`,
+                      }}
+                    >
+                      <div className="dropdown-menu">
+                        {file.hasNotes && <button onClick={() => handleViewNotes(file)}>View Notes</button>}
+                        {file.transcriptionFilename && !file.hasNotes && (
+                          <button onClick={() => navigate(`/notes/${file.transcriptionFilename}`)}>Generate Notes</button>
+                        )}
+                        <button>Download Pdf</button>
+                        <button className="delete-btn">Delete</button>
+                      </div>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -236,13 +307,15 @@ const History = () => {
         </table>
       </div>
 
-      {selectedFiles.length > 0 && (
-        <div className="bulk-actions">
-          <div className="bulk-actions-content">
-            <span>Bulk Actions</span>
-            <div className="bulk-buttons">
-              <button className="export-btn">EXPORT</button>
-              <button className="delete-btn">DELETE</button>
+      {showNoteModal && (
+        <div className="note-modal-overlay" onClick={() => setShowNoteModal(false)}>
+          <div className="note-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="note-modal-header">
+              <h2>{currentNote.title}</h2>
+              <button className="close-button" onClick={() => setShowNoteModal(false)}>×</button>
+            </div>
+            <div className="note-modal-content">
+              <pre>{currentNote.content}</pre>
             </div>
           </div>
         </div>
