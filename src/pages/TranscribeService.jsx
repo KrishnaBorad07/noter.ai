@@ -13,6 +13,7 @@ const TranscribeService = () => {
   const [audioUrl, setAudioUrl] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const assemblyApiKey = import.meta.env.VITE_ASSEMBLYAI_API_KEY;
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -25,6 +26,96 @@ const TranscribeService = () => {
       setError('Please select a valid video file');
       setFile(null);
     }
+  };
+
+  const transcribeAudio = async (audioFileName) => {
+    try {
+      // Get the audio file URL from Supabase
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('audio-files')
+        .getPublicUrl(`${user.id}/${audioFileName}`);
+
+      // Step 1: Upload the audio file to AssemblyAI
+      const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': assemblyApiKey,
+        },
+        body: await fetch(publicUrl).then(r => r.blob())
+      });
+
+      if (!uploadResponse.ok) throw new Error('Failed to upload audio to AssemblyAI');
+      const { upload_url } = await uploadResponse.json();
+
+      // Step 2: Start the transcription
+      const transcribeResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+        method: 'POST',
+        headers: {
+          'Authorization': assemblyApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audio_url: upload_url,
+          language_code: 'en'
+        })
+      });
+
+      if (!transcribeResponse.ok) throw new Error('Failed to start transcription');
+      const { id: transcriptId } = await transcribeResponse.json();
+
+      // Step 3: Poll for transcription completion
+      const result = await pollTranscriptionStatus(transcriptId);
+      
+      // Step 4: Save transcription to Supabase
+      const transcriptionFileName = audioFileName.replace(/\.[^/.]+$/, '') + '.txt';
+      const transcriptionPath = `${user.id}/${transcriptionFileName}`;
+      
+      const { error: uploadError } = await supabase
+        .storage
+        .from('summarized-text')
+        .upload(transcriptionPath, result.text, {
+          contentType: 'text/plain',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      setSuccess('Audio converted and transcribed successfully!');
+      navigate('/history'); // Redirect to history page to see the result
+    } catch (err) {
+      console.error('Transcription error:', err);
+      setError(`Failed to transcribe audio: ${err.message}`);
+    }
+  };
+
+  const pollTranscriptionStatus = async (transcriptId) => {
+    const maxAttempts = 60; // 5 minutes maximum (with 5-second intervals)
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      const response = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+        headers: {
+          'Authorization': assemblyApiKey,
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to check transcription status');
+      
+      const result = await response.json();
+      
+      if (result.status === 'completed') {
+        return result;
+      } else if (result.status === 'error') {
+        throw new Error('Transcription failed');
+      }
+
+      // Wait 5 seconds before next attempt
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      attempts++;
+    }
+
+    throw new Error('Transcription timed out');
   };
 
   const handleConversion = async () => {
@@ -82,10 +173,16 @@ const TranscribeService = () => {
 
       if (data.success && data.url) {
         setAudioUrl(data.url);
-        setSuccess(data.message || 'Successfully converted video to audio!');
+        setSuccess('Converting video to audio and starting transcription...');
         setFile(null);
         setProgress(100);
         setTimeout(() => setProgress(0), 1000);
+
+        // Extract the filename from the URL
+        const audioFileName = data.url.split('/').pop();
+        
+        // Start the transcription process
+        await transcribeAudio(audioFileName);
       } else {
         throw new Error('Invalid response from server');
       }
