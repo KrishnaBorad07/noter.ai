@@ -52,9 +52,9 @@ const Navbar = () => {
       <div className="navbar-center">
         <ul className="nav-links">
           <li><Link to="/" onClick={() => window.scrollTo(0, 0)}>Home</Link></li>
-          <li><a href="#history">History</a></li>
-          <li><a href="#pricing">Pricing</a></li>
-          <li><a href="#feedback">Feedback</a></li>
+          <li><Link to="/history">History</Link></li>
+          <li><Link to="/pricing">Pricing</Link></li>
+          <li><Link to="/feedback">Feedback</Link></li>
         </ul>
       </div>
       
