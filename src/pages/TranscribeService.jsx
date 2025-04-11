@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './TranscribeService.css';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 const TranscribeService = () => {
   const [file, setFile] = useState(null);
@@ -32,6 +33,12 @@ const TranscribeService = () => {
       return;
     }
 
+    if (!user) {
+      setError('Please login first');
+      navigate('/login');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -41,11 +48,18 @@ const TranscribeService = () => {
     formData.append('file', file);
 
     try {
+      // Get the session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session - please login');
+      }
+
       const response = await fetch('http://localhost:5000/convert', {
         method: 'POST',
         body: formData,
         headers: {
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         }
       }).catch(err => {
         throw new Error('Cannot connect to server. Please make sure the backend is running.');

@@ -20,18 +20,29 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+def get_user_from_token(token):
+    if not token or not token.startswith('Bearer '):
+        return None
+    
+    try:
+        # Remove 'Bearer ' prefix
+        jwt_token = token.split(' ')[1]
+        # Get user data from Supabase session
+        user = supabase.auth.get_user(jwt_token)
+        return user.user.id
+    except Exception as e:
+        logger.error(f"Error getting user from token: {str(e)}")
+        return None
+
 @app.route('/convert', methods=['POST'])
 def convert_video_to_audio():
-    # user_session = request.headers.get('Authorization')  # Example: Bearer token
+    # Get authorization token from headers
+    auth_token = request.headers.get('Authorization')
+    user_id = get_user_from_token(auth_token)
 
-    # if not user_session:
-    #     return jsonify({'error': 'Unauthorized'}), 401
-
-    # Use the session token to get the user
-    user_id = request.form.get('user_id')
     if not user_id:
-        return jsonify({"error":"User ID Missing"}),400 # Extract token
-    user_id = user['user']['id']
+        return jsonify({'error': 'Unauthorized - Please login first'}), 401
+
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 
