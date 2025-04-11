@@ -74,7 +74,6 @@ const Navbar = () => {
             {showProfileMenu && (
               <div className="profile-menu">
                 <Link to="/profile" onClick={() => setShowProfileMenu(false)}>Profile</Link>
-                <Link to="/settings" onClick={() => setShowProfileMenu(false)}>Settings</Link>
                 <button onClick={async () => {
                   setShowProfileMenu(false);
                   await logout();
